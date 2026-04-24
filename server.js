@@ -1,5 +1,4 @@
-const PORT = process.env.PORT || 8080;
-const wss = new WebSocket.Server({ port: PORT });
+const wss = new WebSocket.Server({ port: 8080 });
 function getCrash(){
   let r = Math.random();
 
