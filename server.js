@@ -1,4 +1,16 @@
-const wss = new WebSocket.Server({ port: 8080 });
+const express = require("express");
+const http = require("http");
+const WebSocket = require("ws");
+
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// test route (important pour Render)
+app.get("/", (req, res) => {
+  res.send("Server OK");
+});
+
 function getCrash(){
   let r = Math.random();
 
@@ -49,8 +61,17 @@ function startGame(){
   },80);
 }
 
-wss.on("connection", ()=>{
+wss.on("connection", (ws)=>{
+  console.log("Client connecté");
+
   if(!running) startGame();
+
+  ws.on("close", ()=>{
+    console.log("Client déconnecté");
+  });
 });
 
-console.log("Server running...");
+const port = process.env.PORT || 8080;
+server.listen(port, () => {
+  console.log("Server running on port " + port);
+});
