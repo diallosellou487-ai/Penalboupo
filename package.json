@@ -1,5 +1,5 @@
 {
-  "name": "crash-server",
+  "name": "crash",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
