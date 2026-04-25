@@ -10,14 +10,12 @@ app.get("/", (req, res) => {
   res.send("Server OK");
 });
 
-
-// 🔥 ROUND ID (synchronisé par temps)
+// 🔥 ROUND SYNCHRO
 function getRoundId(){
-  return Math.floor(Date.now() / 10000); // 10 secondes
+  return Math.floor(Date.now() / 10000);
 }
 
-
-// 🔥 RANDOM AVEC SEED
+// 🔥 RANDOM AVEC SEED (PAS Math.random)
 function random(seed){
   return function(){
     seed = (seed * 9301 + 49297) % 233280;
@@ -25,19 +23,17 @@ function random(seed){
   };
 }
 
-
-// 🔥 CRASH IDENTIQUE PARTOUT
+// 🔥 CRASH MAX 30x
 function getCrash(roundId){
   const rand = random(roundId);
 
   let r = rand();
 
-  if(r < 0.5) return 1 + rand() * 1.5;
-  if(r < 0.8) return 2 + rand() * 3;
-  if(r < 0.95) return 5 + rand() * 10;
-  return 15 + rand() * 20;
+  if(r < 0.5) return 1 + rand() * 1.5;   // 1 → 2.5
+  if(r < 0.8) return 2 + rand() * 3;     // 2 → 5
+  if(r < 0.95) return 5 + rand() * 10;   // 5 → 15
+  return 15 + rand() * 15;               // 15 → 30 MAX
 }
-
 
 let currentRound = null;
 let interval = null;
@@ -46,7 +42,7 @@ function startGame(){
 
   const roundId = getRoundId();
 
-  // éviter relancer même round
+  // éviter double lancement
   if(roundId === currentRound) return;
 
   currentRound = roundId;
@@ -89,20 +85,19 @@ function startGame(){
   },80);
 }
 
-
-// 🔁 CHECK LOOP (important pour synchro)
+// 🔁 synchro automatique
 setInterval(()=>{
   startGame();
 },1000);
 
-
-wss.on("connection", (ws)=>{
+wss.on("connection", ()=>{
   console.log("CLIENT CONNECTÉ");
 });
-
 
 const port = process.env.PORT || 8080;
 
 server.listen(port, ()=>{
+  console.log("Server running on port " + port);
+});server.listen(port, ()=>{
   console.log("Server running on port " + port);
 });
