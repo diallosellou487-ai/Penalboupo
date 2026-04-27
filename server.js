@@ -15,7 +15,7 @@ function getRoundId(){
   return Math.floor(Date.now() / 10000);
 }
 
-// 🔥 RANDOM AVEC SEED (PAS Math.random)
+// 🔥 RANDOM SEED
 function random(seed){
   return function(){
     seed = (seed * 9301 + 49297) % 233280;
@@ -29,20 +29,17 @@ function getCrash(roundId){
 
   let r = rand();
 
-  if(r < 0.5) return 1 + rand() * 1.5;   // 1 → 2.5
-  if(r < 0.8) return 2 + rand() * 3;     // 2 → 5
-  if(r < 0.95) return 5 + rand() * 10;   // 5 → 15
-  return 15 + rand() * 15;               // 15 → 30 MAX
+  if(r < 0.5) return 1 + rand() * 1.5;
+  if(r < 0.8) return 2 + rand() * 3;
+  if(r < 0.95) return 5 + rand() * 10;
+  return 15 + rand() * 15; // MAX 30
 }
 
 let currentRound = null;
-let interval = null;
 
 function startGame(){
 
   const roundId = getRoundId();
-
-  // éviter double lancement
   if(roundId === currentRound) return;
 
   currentRound = roundId;
@@ -50,9 +47,9 @@ function startGame(){
   let crash = getCrash(roundId);
   let coef = 1;
 
-  console.log("🎮 ROUND:", roundId, "CRASH:", crash.toFixed(2));
+  console.log("RENDER ROUND:", roundId, "CRASH:", crash.toFixed(2));
 
-  interval = setInterval(()=>{
+  let interval = setInterval(()=>{
 
     coef += 0.03;
 
@@ -85,19 +82,14 @@ function startGame(){
   },80);
 }
 
-// 🔁 synchro automatique
-setInterval(()=>{
-  startGame();
-},1000);
+setInterval(startGame,1000);
 
 wss.on("connection", ()=>{
-  console.log("CLIENT CONNECTÉ");
+  console.log("CLIENT CONNECTÉ (RENDER)");
 });
 
 const port = process.env.PORT || 8080;
 
 server.listen(port, ()=>{
-  console.log("Server running on port " + port);
-});server.listen(port, ()=>{
-  console.log("Server running on port " + port);
+  console.log("RENDER SERVER RUNNING");
 });
