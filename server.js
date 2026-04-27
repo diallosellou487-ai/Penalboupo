@@ -35,7 +35,7 @@ function startGame(){
     let t = (Date.now() - startTime) / 1000;
 
     // 🚀 VITESSE AUGMENTÉE ICI
-    let coef = 1 + t * 1.9; // 🔥 plus rapide que normal
+    let coef = 1 + t * 1.8; // 🔥 plus rapide que normal
 
     // 🛑 stop au crash
     if(coef >= crash){
