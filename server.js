@@ -8,35 +8,34 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 app.get("/", (req, res) => {
-  res.send("Seed Timeline Server OK");
+  res.send("SYNC CRASH SERVER OK");
 });
 
-// 🔒 Générer seed
-function generateSeed(){
-  return crypto.randomBytes(16).toString("hex");
-}
+// ⏱️ IMPORTANT : doit être IDENTIQUE sur Render + Termux
+const START_TIME = 1710000000000;
 
-// 🎲 crash déterministe depuis seed
+// ⚡ durée d’un round (5s)
+const ROUND_DURATION = 5000;
+
+// 🎲 crash basé sur seed
 function getCrashFromSeed(seed){
   const hash = crypto.createHash("sha256").update(seed).digest("hex");
-
   let h = parseInt(hash.substring(0, 8), 16);
 
   let crash = (100 / (h % 100)) + 1;
 
-  if(crash > 30) crash = 30; // max 30x
+  if(crash > 30) crash = 30;
 
   return crash;
 }
 
-// 📈 Générer timeline complète
+// 📈 timeline
 function generateTimeline(crash){
-
   let timeline = [];
   let coef = 1;
 
   while(coef < crash){
-    coef *= 1.02; // 🔥 vitesse (modifiable)
+    coef *= 1.02; // ⚡ vitesse
     if(coef > crash) coef = crash;
 
     timeline.push(parseFloat(coef.toFixed(2)));
@@ -45,62 +44,70 @@ function generateTimeline(crash){
   return timeline;
 }
 
-function startGame(){
+// 🔥 état du jeu synchronisé
+function getGameState(){
 
-  if(wss.clients.size === 0) return;
+  let now = Date.now();
 
-  let seed = generateSeed();
+  // 📊 round global basé sur le temps
+  let round = Math.floor((now - START_TIME) / ROUND_DURATION);
+
+  if(round < 0) round = 0;
+
+  let seed = "seed-" + round;
+
   let crash = getCrashFromSeed(seed);
   let timeline = generateTimeline(crash);
 
-  console.log("SEED:", seed);
-  console.log("CRASH:", crash.toFixed(2));
+  // ⏱ position dans le round actuel
+  let timeInRound = (now - START_TIME) % ROUND_DURATION;
+  let index = Math.floor(timeInRound / 40);
 
-  let index = 0;
+  return { round, seed, crash, timeline, index };
+}
 
-  let interval = setInterval(()=>{
+// 🚀 boucle serveur
+setInterval(()=>{
 
-    let coef = timeline[index];
+  let game = getGameState();
+
+  let coef = game.timeline[game.index] || game.crash;
+
+  wss.clients.forEach(c=>{
+    if(c.readyState === 1){
+      c.send(JSON.stringify({
+        type:"update",
+        coef:coef,
+        round:game.round,
+        seed:game.seed
+      }));
+    }
+  });
+
+  // 💥 crash sync
+  if(coef >= game.crash){
 
     wss.clients.forEach(c=>{
       if(c.readyState === 1){
         c.send(JSON.stringify({
-          type:"update",
-          coef:coef,
-          index:index
+          type:"crash",
+          coef:game.crash.toFixed(2),
+          round:game.round,
+          seed:game.seed
         }));
       }
     });
 
-    index++;
+  }
 
-    if(index >= timeline.length){
-      clearInterval(interval);
+},40);
 
-      wss.clients.forEach(c=>{
-        if(c.readyState === 1){
-          c.send(JSON.stringify({
-            type:"crash",
-            coef:crash.toFixed(2),
-            seed:seed
-          }));
-        }
-      });
-
-      setTimeout(startGame,2000);
-    }
-
-  },40); // ⚡ vitesse d'envoi (stable)
-
-}
-
-wss.on("connection", (ws)=>{
+wss.on("connection", ()=>{
   console.log("Client connecté");
-  startGame();
 });
 
 const port = process.env.PORT || 8080;
 
 server.listen(port, ()=>{
-  console.log("Server running on port", port);
-});
+  console.log("SERVER SYNC READY");
+});});
