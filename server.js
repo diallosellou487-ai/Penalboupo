@@ -7,23 +7,21 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+// ✅ route obligatoire (Render health check)
 app.get("/", (req, res) => {
-  res.send("SYNC CRASH SERVER OK");
+  res.send("SERVER OK");
 });
 
-// ⏱️ IMPORTANT : doit être IDENTIQUE sur Render + Termux
+// ⏱️ SYNCHRO
 const START_TIME = 1710000000000;
-
-// ⚡ durée d’un round (5s)
 const ROUND_DURATION = 5000;
 
-// 🎲 crash basé sur seed
+// 🎲 crash
 function getCrashFromSeed(seed){
   const hash = crypto.createHash("sha256").update(seed).digest("hex");
   let h = parseInt(hash.substring(0, 8), 16);
 
   let crash = (100 / (h % 100)) + 1;
-
   if(crash > 30) crash = 30;
 
   return crash;
@@ -35,23 +33,19 @@ function generateTimeline(crash){
   let coef = 1;
 
   while(coef < crash){
-    coef *= 1.02; // ⚡ vitesse
+    coef *= 1.02;
     if(coef > crash) coef = crash;
-
     timeline.push(parseFloat(coef.toFixed(2)));
   }
 
   return timeline;
 }
 
-// 🔥 état du jeu synchronisé
+// 🔥 game state
 function getGameState(){
-
   let now = Date.now();
 
-  // 📊 round global basé sur le temps
   let round = Math.floor((now - START_TIME) / ROUND_DURATION);
-
   if(round < 0) round = 0;
 
   let seed = "seed-" + round;
@@ -59,22 +53,19 @@ function getGameState(){
   let crash = getCrashFromSeed(seed);
   let timeline = generateTimeline(crash);
 
-  // ⏱ position dans le round actuel
   let timeInRound = (now - START_TIME) % ROUND_DURATION;
   let index = Math.floor(timeInRound / 40);
 
   return { round, seed, crash, timeline, index };
 }
 
-// 🚀 boucle serveur
+// 🚀 loop
 setInterval(()=>{
-
   let game = getGameState();
-
   let coef = game.timeline[game.index] || game.crash;
 
   wss.clients.forEach(c=>{
-    if(c.readyState === 1){
+    if(c.readyState === WebSocket.OPEN){
       c.send(JSON.stringify({
         type:"update",
         coef:coef,
@@ -84,11 +75,9 @@ setInterval(()=>{
     }
   });
 
-  // 💥 crash sync
   if(coef >= game.crash){
-
     wss.clients.forEach(c=>{
-      if(c.readyState === 1){
+      if(c.readyState === WebSocket.OPEN){
         c.send(JSON.stringify({
           type:"crash",
           coef:game.crash.toFixed(2),
@@ -97,17 +86,18 @@ setInterval(()=>{
         }));
       }
     });
-
   }
 
 },40);
 
+// connexion
 wss.on("connection", ()=>{
   console.log("Client connecté");
 });
 
-const port = process.env.PORT || 8080;
+// ✅ PORT RENDER (IMPORTANT)
+const PORT = process.env.PORT || 8080;
 
-server.listen(port, ()=>{
-  console.log("SERVER SYNC READY");
-});});
+server.listen(PORT, ()=>{
+  console.log("Server running on port", PORT);
+});
